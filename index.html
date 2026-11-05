@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#f6c1b6">
+  <title>Cubeocus</title>
+  <style>
+    /* critical CSS: the loading screen must look right before the bundle arrives */
+    #loader { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+      background: linear-gradient(160deg, #fbe9d7 0%, #f6c1b6 100%); color: #4a2c2c; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      transition: opacity .5s ease, visibility .5s; }
+    #loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
+    .scene3d { width: 84px; height: 84px; perspective: 500px; }
+    .lcube { position: relative; width: 84px; height: 84px; transform-style: preserve-3d; transform: rotateX(-30deg) rotateY(45deg); animation: lspin 2.4s cubic-bezier(.6,0,.3,1) infinite; }
+    .lcube i { position: absolute; inset: 0; border-radius: 12px; background: #e63946; border: 2px solid rgba(255,255,255,.22); }
+    .lcube i:nth-child(1) { transform: translateZ(42px); }
+    .lcube i:nth-child(2) { transform: rotateY(90deg) translateZ(42px); filter: brightness(.88); }
+    .lcube i:nth-child(3) { transform: rotateY(180deg) translateZ(42px); }
+    .lcube i:nth-child(4) { transform: rotateY(-90deg) translateZ(42px); filter: brightness(.88); }
+    .lcube i:nth-child(5) { transform: rotateX(90deg) translateZ(42px); filter: brightness(1.12); }
+    .lcube i:nth-child(6) { transform: rotateX(-90deg) translateZ(42px); filter: brightness(.75); }
+    @keyframes lspin { 0% { transform: rotateX(-30deg) rotateY(45deg); } 50% { transform: rotateX(-30deg) rotateY(225deg) translateY(-10px); } 100% { transform: rotateX(-30deg) rotateY(405deg); } }
+    .ltitle { font-size: 30px; font-weight: 800; letter-spacing: 8px; padding-left: 8px; }
+    .lbar { width: 180px; height: 6px; border-radius: 3px; background: rgba(74,44,44,.15); overflow: hidden; }
+    .lbar i { display: block; height: 100%; width: 40%; border-radius: 3px; background: #e63946; animation: lslide 1.1s ease-in-out infinite; }
+    @keyframes lslide { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
+    .ltip { font-size: 13px; opacity: .65; min-height: 1em; }
+  </style>
+</head>
+<body>
+  <div id="loader" role="status" aria-label="Loading">
+    <div class="scene3d"><div class="lcube"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="ltitle">CUBEOCUS</div>
+    <div class="lbar"><i></i></div>
+    <div class="ltip" id="loader-tip">Loading…</div>
+  </div>
+
+  <canvas id="c"></canvas>
+
+  <div id="hud">
+    <button id="btn-menu" aria-label="Levels">☰</button>
+    <div class="center">
+      <div id="title">Cubeocus</div>
+      <div id="moves">Moves 0</div>
+    </div>
+    <button id="btn-settings" aria-label="Settings" title="Settings">⚙</button>
+    <button id="btn-restart" aria-label="Restart" title="Restart (R)">↻</button>
+  </div>
+
+  <div id="toolbar">
+    <button id="btn-undo" aria-label="Undo" title="Undo (Ctrl+Z)">↶<span>Undo</span></button>
+    <button id="btn-hint" aria-label="Hint" title="Hint (H)">💡<span>Hint</span></button>
+    <button id="btn-music" aria-label="Music" title="Music">🎵<span>Music</span></button>
+    <button id="btn-sfx" aria-label="Sound effects" title="Sound effects">🔊<span>Sound</span></button>
+  </div>
+
+  <div id="hint" role="status" aria-live="polite"></div>
+
+  <div id="titlescreen" class="panel-wrap clear hidden">
+    <div class="titlebox">
+      <h1>CUBEOCUS</h1>
+      <p>Guide the red cube to its slot</p>
+      <button id="btn-play" class="big">Play</button>
+      <div class="row">
+        <button id="btn-title-levels" class="secondary">Levels</button>
+        <button id="btn-title-daily" class="secondary">Daily puzzle</button>
+        <button id="btn-title-settings" class="secondary">Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay" class="panel-wrap hidden">
+    <div class="panel">
+      <h2 id="win-title">Solved!</h2>
+      <div id="win-stars" class="stars">★★★</div>
+      <p id="win-text"></p>
+      <div class="row">
+        <button id="btn-replay" class="secondary">Replay</button>
+        <button id="btn-next">Next ›</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="levels" class="panel-wrap hidden">
+    <div class="panel wide">
+      <h2>Levels</h2>
+      <div id="level-list"></div>
+      <div class="row">
+        <button id="btn-daily" class="secondary">Daily puzzle</button>
+        <button id="btn-close-levels" class="secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings" class="panel-wrap hidden" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="panel wide">
+      <h2>Settings</h2>
+      <label class="opt"><input type="checkbox" id="opt-reduced"><span><b>Reduce motion</b><small>No camera sway, instant level intro, no confetti</small></span></label>
+      <label class="opt"><input type="checkbox" id="opt-cb"><span><b>Colour-blind palette</b><small>Blue sliders, orange rotors, purple gates</small></span></label>
+      <label class="opt"><input type="checkbox" id="opt-large"><span><b>Large controls</b><small>Bigger buttons and a wider touch area around blocks</small></span></label>
+      <label class="opt"><input type="checkbox" id="opt-haptics"><span><b>Vibration</b><small>Short buzz when you move a block (phones)</small></span></label>
+      <div class="row"><button id="btn-close-settings">Done</button></div>
+    </div>
+  </div>
+
+  <div id="busy" class="panel-wrap hidden">
+    <div class="panel"><div class="spinner"></div><p id="busy-text">Building today's puzzle…</p></div>
+  </div>
+
+  <noscript>This game needs JavaScript.</noscript>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
